@@ -1,0 +1,13 @@
+name = "tih-tumblr-telegram-relay"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+# Public info, safe to keep in source: the one channel this relay posts to.
+TELEGRAM_CHAT_ID = "@mychannel"
+# Only this origin may call the relay. Update if you use a custom domain.
+ALLOWED_ORIGIN = "https://dr3w.github.io"
+
+# TELEGRAM_BOT_TOKEN is NOT set here — it's a secret, set separately with:
+#   npx wrangler secret put TELEGRAM_BOT_TOKEN
+# so it never touches source control.

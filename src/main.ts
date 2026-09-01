@@ -2,7 +2,7 @@ import { fetchFinalPage } from './fetchPage';
 import { extractImageUrls } from './parseImages';
 import { isValidPostUrl } from './validate';
 import { renderError, renderResult, renderTelegramStatus } from './render';
-import { resolveTelegramTarget, sendImages, sendPageLink } from './telegram';
+import { isRelayConfigured, sendToTelegramRelay } from './telegram';
 
 async function main(): Promise<void> {
   const params = new URLSearchParams(window.location.search);
@@ -34,8 +34,7 @@ async function main(): Promise<void> {
 }
 
 async function forwardToTelegram(imageUrls: string[], pageUrl: string): Promise<void> {
-  const target = resolveTelegramTarget(window.location.search, window.location.hash);
-  if (!target) return;
+  if (!isRelayConfigured()) return;
 
   if (imageUrls.length === 0) {
     renderTelegramStatus('No images matched; nothing sent to Telegram.');
@@ -43,8 +42,7 @@ async function forwardToTelegram(imageUrls: string[], pageUrl: string): Promise<
   }
 
   try {
-    await sendImages(target, imageUrls);
-    await sendPageLink(target, pageUrl);
+    await sendToTelegramRelay(imageUrls, pageUrl);
     renderTelegramStatus(`Sent ${imageUrls.length} image(s) to Telegram.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

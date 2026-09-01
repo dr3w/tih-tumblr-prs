@@ -27,22 +27,13 @@ The page:
 
 ### Forwarding images to Telegram
 
-Add `telegramChat` (query param) and `telegramToken` (URL **fragment**, not
-a query param — see Security below) to also forward the found images to a
-Telegram channel:
-
-```
-https://<user>.github.io/tih-tumblr-prs/?url=some-site.com/content&telegramChat=@mychannel#telegramToken=123456:ABC-DEF...
-```
-
-- `telegramChat`: the channel's numeric id (e.g. `-1001234567890`) or its
-  `@username`. The bot must already be an admin of this channel.
-- `telegramToken`: a bot token from [@BotFather](https://t.me/BotFather).
-
-If both are present, each matched image is sent as its own `sendPhoto`
+Once `telegram-relay/` is deployed and its URL is set in `src/telegram.ts`
+(see `telegram-relay/README.md`), every successful lookup also forwards
+the matched images to the one Telegram channel the relay is configured
+for — no extra URL params needed. Each image is sent as its own `sendPhoto`
 message (not grouped into an album), followed by one final message
-containing just `[link](<page url>)` with link previews disabled. If
-either is missing, Telegram forwarding is skipped and the page behaves as
+containing just `[link](<page url>)` with link previews disabled. If the
+relay isn't configured yet, forwarding is skipped and the page behaves as
 in feature 1.
 
 ## Development
@@ -76,38 +67,18 @@ guaranteed.
 
 A Telegram bot token is a full credential — anyone who has it can post as
 that bot anywhere it's been added, not just to the one channel you intend.
-**This app has no backend, so it cannot truly keep that token secret from
-anyone who has the page's URL.** There is no way to make "pass secrets as
-URL params on a static site" fully secure; the best that's achievable here
-is limiting how the token can leak.
+This app has no backend of its own, so it cannot hold that token itself;
+anything the static site holds directly is visible to whoever has the
+page's URL.
 
-What's implemented, given that constraint:
+The fix is `telegram-relay/`: a small, free Cloudflare Worker that holds
+the token as a server-side secret and is the only thing that ever calls
+the Telegram API. The browser only ever sends it `{ imageUrls, pageUrl }`
+— never a credential. See `telegram-relay/README.md` to deploy it (free
+tier, no credit card, ~5 commands).
 
-- The token is read from the URL **fragment** (`#telegramToken=...`), not
-  the query string. Fragments are never transmitted to a server — not in
-  the request itself, not in the `Referer` header sent when the page (or
-  an `<img>` it loads) makes a request to another origin. `telegramChat`
-  stays a plain query param since a channel id/username alone doesn't
-  grant control of anything.
-- This blocks *network*-level leakage: it won't end up in GitHub Pages'
-  fronting CDN logs, analytics, or a `Referer` header. It does **not**
-  protect against browser history, someone reading over your shoulder, or
-  the link being copy-pasted or screenshotted — anyone with the full URL
-  still has full control of the bot.
-
-Given that, also:
-
-- Use a bot dedicated to this one channel and nothing else, so a leaked
-  token's blast radius is "someone can post to a channel that's already
-  public" rather than access to other chats the bot administers.
-- Treat generated links as sensitive and short-lived; don't bookmark or
-  share them. Rotate the token via @BotFather if a link is ever exposed.
-
-**The actually secure fix** is to stop sending the token to the browser at
-all: hold it as a server-side secret behind a small relay (a Cloudflare
-Worker, a Netlify/Vercel function, or a Lambda function URL — no full
-backend needed), have this page call the relay with only the channel id
-and image URLs, and let the relay call the Telegram API itself. That's a
-small addition on top of the static site, not a rewrite, and it's the only
-way the token stops being exposed to whoever holds the link. Worth doing
-before pointing this at a bot token you care about.
+Also worth doing regardless: use a bot dedicated to this one channel and
+nothing else, so if the token is ever compromised (e.g. a leaked
+Cloudflare secret), the blast radius is "someone can post to a channel
+that's already public" rather than access to other chats the bot
+administers.
