@@ -1,15 +1,19 @@
-function getOutputElement(): HTMLElement {
-  const el = document.getElementById('output');
-  if (!el) throw new Error('Missing #output element');
+function getElement(id: string): HTMLElement {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing #${id} element`);
   return el;
 }
 
 export function renderResult(status: number, imageUrls: string[]): void {
   document.title = `${status} OK`;
-  getOutputElement().textContent = JSON.stringify(imageUrls, null, 2);
+  getElement('output').textContent = JSON.stringify(imageUrls, null, 2);
 }
 
 export function renderError(status: number, message: string): void {
   document.title = `${status} Error`;
-  getOutputElement().textContent = JSON.stringify({ error: message }, null, 2);
+  getElement('output').textContent = JSON.stringify({ error: message }, null, 2);
+}
+
+export function renderTelegramStatus(message: string): void {
+  getElement('telegram-status').textContent = message;
 }
